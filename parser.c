@@ -422,7 +422,7 @@ izm_http_parse_headers(struct izm_http_headers_parser *parser,
 		return IZM_PARSER_OK;
 
 	const char *end = input + input_size;
-	int header_idx = 0;
+	uint32_t header_idx = 0;
 
 	if (parser->state == S_INIT) {
 		parser->p = input;
@@ -443,6 +443,10 @@ izm_http_parse_headers(struct izm_http_headers_parser *parser,
 				parser->state = S_EOF;
 				break;
 			}
+			
+			if (header_idx >= headers_count)
+				goto CONTINUE;
+			
 			nm = p;
 			parser->state = S_NAME;
 			/* FALL THROUGH */
@@ -493,8 +497,6 @@ izm_http_parse_headers(struct izm_http_headers_parser *parser,
 			++header_idx;			
 
 			parser->state = S_BEFORE_NAME;
-			if (header_idx >= headers_count)
-				goto CONTINUE;
 			
 			continue;
 		case S_EOF:

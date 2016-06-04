@@ -270,7 +270,13 @@ hp_test() {
 	   && (hf == 2)
 	   && bufis(h[1].name, h[1].name_size, "LP0")
 	   && bufis(h[1].value, h[1].value_size, "On Fire"));
-	
+
+	hc = 1;
+	PARSE("Instruction: HCF\r\nLP0: On Fire\r\n\r\n", 1, "insufficient headers");
+	ok((ret == IZM_PARSER_CONTINUE)
+	   && (hf == 1)
+	   && (h[1].name == NULL));
+	hc = sizeof(h) / sizeof(h[0]);	
 
 	PARSE("d\0ge: doge\r\n\r\n", 1, "NUL in field name");
 	ok((ret == IZM_PARSER_BAD_REQUEST)

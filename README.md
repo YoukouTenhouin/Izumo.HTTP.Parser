@@ -5,6 +5,7 @@ Zero-copy no-memory-alloc HTTP Parser used for [Izumo](https://github.com/Abraha
 + Zero-copy
 + No memory allocation
 + No dependencies
++ Guaranteed to be stateless (i. e. free of local static objects)
 
 ## Example (Pseudo-code)
 Parsing request line:
