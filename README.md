@@ -1,5 +1,5 @@
 # Izumo.HTTP.Parser
-Zero-copy no-memory-alloc HTTP Parser used for [Izumo](https://github.com/AbrahamHokuto/Izumo).
+Zero-copy no-memory-alloc HTTP Parser used by [Izumo](https://github.com/AbrahamHokuto/Izumo).
 
 ## Features
 + Zero-copy
