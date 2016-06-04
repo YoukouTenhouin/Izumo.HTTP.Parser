@@ -1,8 +1,21 @@
 #include "parser.h"
 
-#define STREQU5(A, B) ((A[0] == B[0]) && (A[1] == B[1])	\
+#if defined USE_STREQU5
+#define STREQU5(A, B) ((A[0] == B[0]) && (A[1] == B[1])		\
 		       && (A[2] == B[2]) && (A[3] == B[3])	\
 		       && (A[4] == B[4]))
+#else
+#include <string.h>
+#define STREQU5(A, B) (strncmp(A, B, 5) == 0)
+#endif	/* USE_STREQU5 */
+
+#if defined __GNUC__ && defined USE_BRANCH_PREDICT
+#define likely(x) __builtin_expect((x), 1)
+#define unlikely(x) __builtin_expect((x), 0)
+#else
+#define likely(x) (x)
+#define unlikely(x) (x)
+#endif	/* __GNUC__ && USE_BRANCH_PREDICT */
 
 #ifdef USE_CHAR_MAPS
 
@@ -182,11 +195,11 @@ izm_http_parse_request_line(struct izm_http_request_line_parser *parser,
 			goto FINISHED;			
 		case S_METHOD:
 			if (!is_tchar(*p)) {
-				if (*p != ' ')
+				if (unlikely(*p != ' '))
 					goto BAD_REQUEST;
 				
 				size_t size = p - m;
-				if (size == 0)
+				if (unlikely(size == 0))
 					goto BAD_REQUEST;
 				
 				l->method = m;
@@ -200,11 +213,11 @@ izm_http_parse_request_line(struct izm_http_request_line_parser *parser,
 			/* FALL THROUGH */
 		case S_TARGET:
 			if (!is_vchar(*p) && !is_obs_text(*p)) {
-				if (*p != ' ')
+				if (unlikely(*p != ' '))
 					goto BAD_REQUEST;
 
 				size_t size = p - m;
-				if (size == 0)
+				if (unlikely(size == 0))
 					goto BAD_REQUEST;
 
 				l->target = m;
@@ -218,38 +231,40 @@ izm_http_parse_request_line(struct izm_http_request_line_parser *parser,
 			break;
 		case S_BEFORE_MAJOR_VER:
 			if ((p - m) < 5) break;
-			if (!STREQU5(m, "HTTP/"))
+			if (unlikely(!STREQU5(m, "HTTP/")))
 				goto BAD_REQUEST;
 			
 			parser->state = S_MAJOR_VER;
 			/* FALL THROUGH */
 		case S_MAJOR_VER:
-			if (!is_digit(*p))
+			if (unlikely(!is_digit(*p)))
 				goto BAD_REQUEST;
 
 			l->httpver_major = *p - '0';
 			parser->state = S_DOT;
 			break;
 		case S_DOT:
-			if (*p != '.')
+			if (unlikely(*p != '.'))
 				goto BAD_REQUEST;
+			
 			parser->state = S_MINOR_VER;
 			break;
 		case S_MINOR_VER:
-			if (!is_digit(*p))
+			if (unlikely(!is_digit(*p)))
 				goto BAD_REQUEST;
 			
 			l->httpver_minor = *p - '0';
 			parser->state = S_CR;
 			break;
 		case S_CR:
-			if (*p != '\r')
+			if (unlikely(*p != '\r'))
 				goto BAD_REQUEST;
 			parser->state = S_LF;
 			break;
 		case S_LF:
-			if (*p != '\n')
+			if (unlikely(*p != '\n'))
 				goto BAD_REQUEST;
+			
 			goto FINISHED;
 		default:
 			return IZM_PARSER_INVALID_PARSER;
@@ -310,33 +325,33 @@ izm_http_parse_status_line(struct izm_http_status_line_parser *parser,
 			goto FINISHED;
 		case S_BEFORE_MAJOR_VER:
 			if (p - m < 5) break;
-			if (!STREQU5(m, "HTTP/"))
+			if (unlikely(!STREQU5(m, "HTTP/")))
 				goto BAD_REQUEST;
 			
 			parser->state = S_MAJOR_VER;
 			/* FALL THROUGH */
 		case S_MAJOR_VER:
-			if (!is_digit(*p))
+			if (unlikely(!is_digit(*p)))
 				goto BAD_REQUEST;
 			
 			l->httpver_major = *p - '0';
 			parser->state = S_DOT;
 			break;
 		case S_DOT:
-			if (*p != '.')
+			if (unlikely(*p != '.'))
 				goto BAD_REQUEST;
 			
 			parser->state = S_MINOR_VER;
 			break;
 		case S_MINOR_VER:
-			if (!is_digit(*p))
+			if (unlikely(!is_digit(*p)))
 				goto BAD_REQUEST;
 			
 			l->httpver_minor = *p - '0';
 			parser->state = S_BEFORE_STATUS_CODE;	
 			break;
 		case S_BEFORE_STATUS_CODE:
-			if (*p != ' ')
+			if (unlikely(*p != ' '))
 				goto BAD_REQUEST;
 
 			m = p + 1;
@@ -344,7 +359,7 @@ izm_http_parse_status_line(struct izm_http_status_line_parser *parser,
 			break;
 		case S_STATUS_CODE:
 			if (p - m < 3) {
-				if (!is_digit(*p))
+				if (unlikely(!is_digit(*p)))
 					goto BAD_REQUEST;
 
 				break;
@@ -356,7 +371,7 @@ izm_http_parse_status_line(struct izm_http_status_line_parser *parser,
 			parser->state = S_BEFORE_REASON;
 			/* FALL THROUGH */
 		case S_BEFORE_REASON:
-			if (*p != ' ')
+			if (unlikely(*p != ' '))
 				goto BAD_REQUEST;
 
 			parser->state = S_REASON;
@@ -364,7 +379,7 @@ izm_http_parse_status_line(struct izm_http_status_line_parser *parser,
 			break;
 		case S_REASON:
 			if (!is_vchar(*p) && !is_whitespace(*p) && !is_obs_text(*p)) {
-				if (*p == '\r'){
+				if (likely(*p == '\r')) {
 					l->reason = m;
 					l->reason_size = p - m;
 					parser->state = S_CRLF;
@@ -374,7 +389,7 @@ izm_http_parse_status_line(struct izm_http_status_line_parser *parser,
 			}			
 			break;
 		case S_CRLF:
-			if (*p != '\n')
+			if (unlikely(*p != '\n'))
 				goto BAD_REQUEST;
 
 			goto FINISHED;
@@ -452,11 +467,11 @@ izm_http_parse_headers(struct izm_http_headers_parser *parser,
 			/* FALL THROUGH */
 		case S_NAME:
 			if (!is_tchar(*p)) {
-				if (*p != ':')
+				if (unlikely(*p != ':'))
 					goto BAD_REQUEST;
 
 				ns = p - nm;
-				if (ns == 0)
+				if (unlikely(ns == 0))
 					goto BAD_REQUEST;
 
 				parser->state = S_BEFORE_VALUE;
@@ -469,14 +484,14 @@ izm_http_parse_headers(struct izm_http_headers_parser *parser,
 			/* FALL THROUGH */
 		case S_VALUE:
 			if (!is_vchar(*p) && !is_obs_text(*p) && !is_whitespace(*p)) {			
-				if (*p != '\r')
+				if (unlikely(*p != '\r'))
 					goto BAD_REQUEST;
 				
 				parser->state = S_CR;
 			}
 			break;
 		case S_CR:
-			if (*p != '\n')
+			if (unlikely(*p != '\n'))
 				goto BAD_REQUEST;
 
 			parser->state = S_LF;
@@ -500,7 +515,7 @@ izm_http_parse_headers(struct izm_http_headers_parser *parser,
 			
 			continue;
 		case S_EOF:
-			if (*p != '\n')
+			if (unlikely(*p != '\n'))
 				goto BAD_REQUEST;
 
 			goto FINISHED;
