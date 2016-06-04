@@ -195,7 +195,7 @@ hp_test() {
 	struct izm_http_header h[32];
 	struct izm_http_headers_parser hp;
 
-	int hc = sizeof(h) / sizeof(h[0]), hf;
+	uint32_t hc = sizeof(h) / sizeof(h[0]), hf;
 	
 	int ret;
 	size_t bytes_parsed;

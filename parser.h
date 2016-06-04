@@ -2,6 +2,7 @@
 #define __IZM_HTTP_PARSER_H__
 
 #include <stddef.h>
+#include <stdint.h>
 
 struct izm_http_request_line {
 	const char *method;
@@ -58,17 +59,17 @@ enum {
 
 int izm_http_parse_request_line(struct izm_http_request_line_parser *parser,
 				struct izm_http_request_line *l,
-				size_t *bytes_scaned,
+				size_t *bytes_scanned,
 				const char *input, size_t input_size);
 
 int izm_http_parse_status_line(struct izm_http_status_line_parser *parser,
 			       struct izm_http_status_line *l,
-			       size_t *bytes_scaned,
+			       size_t *bytes_scanned,
 			       const char *input, size_t input_size);
 
 int izm_http_parse_headers(struct izm_http_headers_parser *parser,
-			   struct izm_http_header headers[], int headers_count,
-			   int *headers_filled, size_t *bytes_scaned,
+			   struct izm_http_header headers[], uint32_t headers_count,
+			   uint32_t *headers_filled, size_t *bytes_scanned,
 			   const char *input, size_t input_size);
 
 #endif	/* __IZM_HTTP_PARSER_H__ */

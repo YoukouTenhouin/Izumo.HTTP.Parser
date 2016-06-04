@@ -1,7 +1,5 @@
 #include "parser.h"
 
-#include <string.h>
-
 #define STREQU5(A, B) ((A[0] == B[0]) && (A[1] == B[1])	\
 		       && (A[2] == B[2]) && (A[3] == B[3])	\
 		       && (A[4] == B[4]))
@@ -402,8 +400,8 @@ FINISHED:
 
 int
 izm_http_parse_headers(struct izm_http_headers_parser *parser,
-		       struct izm_http_header headers[], int headers_count,
-		       int *headers_filled, size_t *bytes_scaned,
+		       struct izm_http_header headers[], uint32_t headers_count,
+		       uint32_t *headers_filled, size_t *bytes_scaned,
 		       const char *input, size_t input_size)
 {
 	enum {
@@ -431,8 +429,8 @@ izm_http_parse_headers(struct izm_http_headers_parser *parser,
 		parser->state = S_BEFORE_NAME;
 	}
 
-	const char *p = parser->p, *nm, *vm;
-	size_t ns;
+	const char *p = parser->p, *nm = NULL, *vm = NULL;
+	size_t ns = 0;
 
 	while (p < end) {
 		switch (parser->state) {
@@ -492,9 +490,12 @@ izm_http_parse_headers(struct izm_http_headers_parser *parser,
 			headers[header_idx].name_size = ns;
 			headers[header_idx].value = vm;
 			headers[header_idx].value_size = p - vm - 2;
-			++header_idx;
+			++header_idx;			
 
 			parser->state = S_BEFORE_NAME;
+			if (header_idx >= headers_count)
+				goto CONTINUE;
+			
 			continue;
 		case S_EOF:
 			if (*p != '\n')
@@ -506,7 +507,8 @@ izm_http_parse_headers(struct izm_http_headers_parser *parser,
 		}
 		++p;
 	}
-
+	
+CONTINUE:
 	*headers_filled = header_idx;
 	parser->p = p;
 	parser->nm = nm;
