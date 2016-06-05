@@ -23,7 +23,7 @@
 
 #ifdef USE_CHAR_MAPS
 
-const char DIGIT_MAP[] = {
+static const char DIGIT_MAP[] = {
 	0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0,
@@ -42,7 +42,7 @@ const char DIGIT_MAP[] = {
 	0, 0, 0, 0, 0, 0, 0, 0
 };
 
-const char DELIMITERS_MAP[] = {
+static const char DELIMITERS_MAP[] = {
 	0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0,
@@ -61,7 +61,7 @@ const char DELIMITERS_MAP[] = {
 	0, 0, 0, 1, 0, 1, 0, 0
 };
 
-const char VCHAR_MAP[] = {
+static const char VCHAR_MAP[] = {
 	0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0,
@@ -80,7 +80,7 @@ const char VCHAR_MAP[] = {
 	1, 1, 1, 1, 1, 1, 1, 0
 };
 
-const char TCHAR_MAP[] = {
+static const char TCHAR_MAP[] = {
 	0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0,
@@ -129,7 +129,7 @@ is_whitespace(char c)
 }
 
 /* Common syntax components */
-static inline int
+inline static int
 is_delimiters(char c)
 {
 #ifndef USE_CHAR_MAPS
@@ -143,7 +143,7 @@ is_delimiters(char c)
 #endif
 }
 
-static inline int
+inline static int
 is_tchar(char c)
 {
 #ifndef USE_CHAR_MAPS
@@ -153,7 +153,7 @@ is_tchar(char c)
 #endif
 }
 
-static inline int
+inline static int
 is_obs_text(char c)
 {
 	return c < 0;

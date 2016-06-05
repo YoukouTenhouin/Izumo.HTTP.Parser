@@ -1,5 +1,5 @@
-#ifndef __IZM_HTTP_PARSER_H__
-#define __IZM_HTTP_PARSER_H__
+#ifndef IZM_HTTP_PARSER_H__
+#define IZM_HTTP_PARSER_H__
 
 #include <stddef.h>
 #include <stdint.h>
@@ -72,4 +72,4 @@ int izm_http_parse_headers(struct izm_http_headers_parser *parser,
 			   uint32_t *headers_filled, size_t *bytes_scanned,
 			   const char *input, size_t input_size);
 
-#endif	/* __IZM_HTTP_PARSER_H__ */
+#endif	/* IZM_HTTP_PARSER_H__ */
