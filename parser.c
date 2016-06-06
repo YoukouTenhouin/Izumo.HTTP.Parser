@@ -5,7 +5,7 @@
 #define USE_CHAR_MAPS
 
 #ifdef __GNUC__
-#pragma GCC diagnostic ignored "-Wattributes"
+#pragma GCC diagnostic ignored "-Wattributes" /* SHUT UP GCC */
 #define FORCEINLINE __attribute__((always_inline))
 #else
 #define FORCEINLINE
@@ -29,10 +29,10 @@ _tzcnt(uint64_t in)
 FORCEINLINE static uint32_t
 _find_method_avx2_32(__m256i b0)
 {
-	__m256i _rr0 = _mm256_set1_epi8(0x40);
-	__m256i _rr1 = _mm256_set1_epi8(0x5B);
+	__m256i _rr0 = _mm256_set1_epi8(0x41);
+	__m256i _rr1 = _mm256_set1_epi8(0x5A);
 
-	__m256i _ir0 = _mm256_and_si256(_mm256_cmpgt_epi8(b0, _rr0), _mm256_cmpgt_epi8(_rr1, b0));
+	__m256i _ir0 = _mm256_or_si256(_mm256_cmpgt_epi8(_rr0, b0), _mm256_cmpgt_epi8(b0, _rr1));
 
 	return _mm256_movemask_epi8(_ir0);
 }
@@ -40,14 +40,14 @@ _find_method_avx2_32(__m256i b0)
 FORCEINLINE static uint32_t
 _find_target_avx2_32(__m256i b0)
 {
-	__m256i _rr0 = _mm256_set1_epi8(0x00);
-	__m256i _rr1 = _mm256_set1_epi8(0x32);
+	__m256i _rr0 = _mm256_set1_epi8(0x00 -1);
+	__m256i _rr1 = _mm256_set1_epi8(0x33);
 	__m256i _rr2 = _mm256_set1_epi8(0x7F);
 
-	__m256i _ir0 = _mm256_cmpgt_epi8(_rr0, b0);
-	__m256i _ir1 = _mm256_cmpgt_epi8(b0, _rr1);
+	__m256i _ir0 = _mm256_cmpgt_epi8(b0, _rr0);
+	__m256i _ir1 = _mm256_cmpgt_epi8(_rr1, b0);
 	__m256i _ir2 = _mm256_cmpeq_epi8(b0, _rr2);
-	__m256i _ir3 = _mm256_or_si256(_ir0, _ir1);
+	__m256i _ir3 = _mm256_and_si256(_ir0, _ir1);
 	__m256i _ir4 = _mm256_andnot_si256(_ir2, _ir3);
 
 	return _mm256_movemask_epi8(_ir4);	
@@ -56,27 +56,53 @@ _find_target_avx2_32(__m256i b0)
 FORCEINLINE static uint64_t
 _find_target_avx2_64(__m256i b0, __m256i b1)
 {
-	__m256i _rr0 = _mm256_set1_epi8(0x00);
-	__m256i _rr1 = _mm256_set1_epi8(0x32);
+	__m256i _rr0 = _mm256_set1_epi8(0x00 - 1);
+	__m256i _rr1 = _mm256_set1_epi8(0x21);
 	__m256i _rr2 = _mm256_set1_epi8(0x7F);
 
-	__m256i _ir0 = _mm256_cmpgt_epi8(_rr0, b0);
-	__m256i _ir1 = _mm256_cmpgt_epi8(b0, _rr1);
-	__m256i _ir2 = _mm256_cmpeq_epi8(b0, _rr2);
-	__m256i _ir3 = _mm256_or_si256(_ir0, _ir1);
+	__m256i _ir0 = _mm256_cmpgt_epi8(b0, _rr0);
+	__m256i _ir1 = _mm256_cmpgt_epi8(_rr1, b0);
+	__m256i _ir2 = _mm256_cmpeq_epi8(_rr2, b0);
+	__m256i _ir3 = _mm256_and_si256(_ir0, _ir1);
 	__m256i _ir4 = _mm256_andnot_si256(_ir2, _ir3);
 
 	uint64_t _r0 = _mm256_movemask_epi8(_ir4);
 
-	_ir0 = _mm256_cmpgt_epi8(_rr0, b1);
-	_ir1 = _mm256_cmpgt_epi8(b1, _rr1);
-	_ir2 = _mm256_cmpeq_epi8(b1, _rr2);
-	_ir3 = _mm256_or_si256(_ir0, _ir1);
+	_ir0 = _mm256_cmpgt_epi8(b1, _rr0);
+	_ir1 = _mm256_cmpgt_epi8(_rr1, b1);
+	_ir2 = _mm256_cmpeq_epi8(_rr2, b1);
+	_ir3 = _mm256_and_si256(_ir0, _ir1);
 	_ir4 = _mm256_andnot_si256(_ir2, _ir3);
 
 	uint64_t _r1 = _mm256_movemask_epi8(_ir4);
 
 	return (_r1 << 32) | _r0;	
+}
+
+FORCEINLINE static uint32_t
+_find_field_name_avx2_32(__m256i b0)
+{
+	/* STILL BROKE */
+	__m256i _rr0 = _mm256_set1_epi8(0x00 - 1);
+	__m256i _rr1 = _mm256_set1_epi8(0x30);
+	__m256i _rr2 = _mm256_set1_epi8(0x39);
+	__m256i _rr3 = _mm256_set1_epi8(0x41);
+	__m256i _rr4 = _mm256_set1_epi8(0x5A);
+	__m256i _rr5 = _mm256_set1_epi8(0x61);
+	__m256i _rr6 = _mm256_set1_epi8(0x7A);
+	__m256i _rr7 = _mm256_set1_epi8(0x2D);
+
+	__m256i _ir0 = _mm256_cmpgt_epi8(b0, _rr0);
+	__m256i _ir1 = _mm256_or_si256(_mm256_cmpgt_epi8(_rr1, b0), _mm256_cmpgt_epi8(b0, _rr2));
+	__m256i _ir2 = _mm256_or_si256(_mm256_cmpgt_epi8(_rr3, b0), _mm256_cmpgt_epi8(b0, _rr4));
+	__m256i _ir3 = _mm256_or_si256(_mm256_cmpgt_epi8(_rr5, b0), _mm256_cmpgt_epi8(b0, _rr6));
+	__m256i _ir4 = _mm256_cmpeq_epi8(b0, _rr7);
+	__m256i _ir5 = _mm256_or_si256(_ir0, _ir1);
+	__m256i _ir6 = _mm256_or_si256(_ir2, _ir3);
+	__m256i _ir7 = _mm256_or_si256(_ir5, _ir6);
+	__m256i _ir8 = _mm256_andnot_si256(_ir4, _ir7);
+	
+	return _mm256_movemask_epi8(_ir4);	
 }
 
 FORCEINLINE static size_t
@@ -101,6 +127,14 @@ _target_index_avx2_64(const char *buf)
 	__m256i b0 = _mm256_loadu_si256((void*)buf);
 	__m256i b1 = _mm256_loadu_si256((void*)(buf + 32));	
 	uint64_t bitmap = _find_target_avx2_64(b0, b1);
+	return _tzcnt(bitmap);
+}
+
+FORCEINLINE static size_t
+_field_name_index_avx2_32(const char *buf)
+{
+	__m256i b0 = _mm256_loadu_si256((void*)buf);
+	uint32_t bitmap = _find_field_name_avx2_32(b0);
 	return _tzcnt(bitmap);
 }
 
@@ -427,6 +461,7 @@ izm_http_parse_request_line(struct izm_http_request_line_parser *parser,
 		}
 		++p;
 	}
+
 	parser->m = m;
 	parser->p = p;
 	*bytes_scaned = p - input;
@@ -622,6 +657,21 @@ izm_http_parse_headers(struct izm_http_headers_parser *parser,
 			parser->state = S_NAME;
 			/* FALL THROUGH */
 		case S_NAME:
+#ifdef USE_AVX2_
+			if (end - p > 32) {
+				size_t idx = _field_name_index_avx2_32(p);
+				if (unlikely(idx >= 32)) {
+					p += 31;
+					break;
+				}
+
+				p += idx;
+				if (unlikely(*p != ':'))
+					goto BAD_REQUEST;
+
+				parser->state = S_BEFORE_VALUE;
+			} else
+#endif	/* USE_AVX2_ */
 			if (!is_tchar(*p)) {
 				if (unlikely(*p != ':'))
 					goto BAD_REQUEST;
