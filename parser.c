@@ -80,9 +80,16 @@ _find_target_avx2_64(__m256i b0, __m256i b1)
 }
 
 FORCEINLINE static uint32_t
+_match_httpver_avx2(__m256i b0, __m256i b1)
+{
+	__m256i _ir0 = _mm256_cmpeq_epi8(b0, b1);
+	uint32_t bitmap = _mm256_movemask_epi8(_ir0);
+	return bitmap & 0xFF;
+}
+
+FORCEINLINE static uint32_t
 _find_field_name_avx2_32(__m256i b0)
 {
-	/* STILL BROKE */
 	__m256i _rr0 = _mm256_set1_epi8(0x00 - 1);
 	__m256i _rr1 = _mm256_set1_epi8(0x30);
 	__m256i _rr2 = _mm256_set1_epi8(0x39);
@@ -92,17 +99,104 @@ _find_field_name_avx2_32(__m256i b0)
 	__m256i _rr6 = _mm256_set1_epi8(0x7A);
 	__m256i _rr7 = _mm256_set1_epi8(0x2D);
 
-	__m256i _ir0 = _mm256_cmpgt_epi8(b0, _rr0);
-	__m256i _ir1 = _mm256_or_si256(_mm256_cmpgt_epi8(_rr1, b0), _mm256_cmpgt_epi8(b0, _rr2));
-	__m256i _ir2 = _mm256_or_si256(_mm256_cmpgt_epi8(_rr3, b0), _mm256_cmpgt_epi8(b0, _rr4));
-	__m256i _ir3 = _mm256_or_si256(_mm256_cmpgt_epi8(_rr5, b0), _mm256_cmpgt_epi8(b0, _rr6));
-	__m256i _ir4 = _mm256_cmpeq_epi8(b0, _rr7);
+	__m256i _ir0 = _mm256_and_si256(_mm256_cmpgt_epi8(b0, _rr0), _mm256_cmpgt_epi8(_rr1, b0));
+	__m256i _ir1 = _mm256_and_si256(_mm256_cmpgt_epi8(b0, _rr2), _mm256_cmpgt_epi8(_rr3, b0));
+	__m256i _ir2 = _mm256_and_si256(_mm256_cmpgt_epi8(b0, _rr4), _mm256_cmpgt_epi8(_rr5, b0));
+	__m256i _ir3 = _mm256_cmpeq_epi8(b0, _rr6);
+	__m256i _ir4 = _mm256_cmpeq_epi8(b0, _rr7); 
 	__m256i _ir5 = _mm256_or_si256(_ir0, _ir1);
 	__m256i _ir6 = _mm256_or_si256(_ir2, _ir3);
 	__m256i _ir7 = _mm256_or_si256(_ir5, _ir6);
 	__m256i _ir8 = _mm256_andnot_si256(_ir4, _ir7);
 	
-	return _mm256_movemask_epi8(_ir4);	
+	return _mm256_movemask_epi8(_ir8);	
+}
+
+FORCEINLINE static uint32_t
+_find_field_val_avx2_32(__m256i b0)
+{
+	__m256i _rr0 = _mm256_set1_epi8(0x00 - 1);
+	__m256i _rr1 = _mm256_set1_epi8(0x20);
+	__m256i _rr2 = _mm256_set1_epi8(0x09);
+	__m256i _rr3 = _mm256_set1_epi8(0x7F);
+	
+	__m256i _ir0 = _mm256_and_si256(_mm256_cmpgt_epi8(b0, _rr0), _mm256_cmpgt_epi8(_rr1, b0));
+	__m256i _ir1 = _mm256_cmpeq_epi8(b0, _rr2);
+	__m256i _ir2 = _mm256_cmpeq_epi8(b0, _rr3);
+	__m256i _ir3 = _mm256_or_si256(_ir0, _ir2);
+	__m256i _ir4 = _mm256_andnot_si256(_ir1, _ir3);
+	return _mm256_movemask_epi8(_ir4);
+}
+
+FORCEINLINE static uint64_t
+_find_field_val_avx2_64(__m256i b0, __m256i b1)
+{
+	__m256i _rr0 = _mm256_set1_epi8(0x00 - 1);
+	__m256i _rr1 = _mm256_set1_epi8(0x20);
+	__m256i _rr2 = _mm256_set1_epi8(0x09);
+	__m256i _rr3 = _mm256_set1_epi8(0x7F);
+	
+	__m256i _ir0 = _mm256_and_si256(_mm256_cmpgt_epi8(b0, _rr0), _mm256_cmpgt_epi8(_rr1, b0));
+	__m256i _ir1 = _mm256_cmpeq_epi8(b0, _rr2);
+	__m256i _ir2 = _mm256_cmpeq_epi8(b0, _rr3);
+	__m256i _ir3 = _mm256_or_si256(_ir0, _ir2);
+	__m256i _ir4 = _mm256_andnot_si256(_ir1, _ir3);
+	
+	uint64_t r1 =  _mm256_movemask_epi8(_ir4);
+	
+	_ir0 = _mm256_and_si256(_mm256_cmpgt_epi8(b1, _rr0), _mm256_cmpgt_epi8(_rr1, b1));
+	_ir1 = _mm256_cmpeq_epi8(b1, _rr2);
+	_ir2 = _mm256_cmpeq_epi8(b1, _rr3);
+	_ir3 = _mm256_or_si256(_ir0, _ir2);
+	_ir4 = _mm256_andnot_si256(_ir1, _ir3);
+	
+	uint64_t r2 =  _mm256_movemask_epi8(_ir4);
+	
+	return (r2 << 32) | r1;	
+}
+
+FORCEINLINE static void
+_find_field_val_avx2_128(__m256i b0, __m256i b1, __m256i b2, __m256i b3, uint64_t *r0, uint64_t *r1)
+{
+	__m256i _rr0 = _mm256_set1_epi8(0x00 - 1);
+	__m256i _rr1 = _mm256_set1_epi8(0x20);
+	__m256i _rr2 = _mm256_set1_epi8(0x09);
+	__m256i _rr3 = _mm256_set1_epi8(0x7F);
+	
+	__m256i _ir0 = _mm256_and_si256(_mm256_cmpgt_epi8(b0, _rr0), _mm256_cmpgt_epi8(_rr1, b0));
+	__m256i _ir1 = _mm256_cmpeq_epi8(b0, _rr2);
+	__m256i _ir2 = _mm256_cmpeq_epi8(b0, _rr3);
+	__m256i _ir3 = _mm256_or_si256(_ir0, _ir2);
+	__m256i _ir4 = _mm256_andnot_si256(_ir1, _ir3);
+	
+	uint64_t _r0 =  _mm256_movemask_epi8(_ir4);
+	
+	_ir0 = _mm256_and_si256(_mm256_cmpgt_epi8(b1, _rr0), _mm256_cmpgt_epi8(_rr1, b1));
+	_ir1 = _mm256_cmpeq_epi8(b1, _rr2);
+	_ir2 = _mm256_cmpeq_epi8(b1, _rr3);
+	_ir3 = _mm256_or_si256(_ir0, _ir2);
+	_ir4 = _mm256_andnot_si256(_ir1, _ir3);
+	
+	uint64_t _r1 =  _mm256_movemask_epi8(_ir4);
+
+	_ir0 = _mm256_and_si256(_mm256_cmpgt_epi8(b2, _rr0), _mm256_cmpgt_epi8(_rr1, b2));
+	_ir1 = _mm256_cmpeq_epi8(b2, _rr2);
+	_ir2 = _mm256_cmpeq_epi8(b2, _rr3);
+	_ir3 = _mm256_or_si256(_ir0, _ir2);
+	_ir4 = _mm256_andnot_si256(_ir1, _ir3);
+	
+	uint64_t _r2 =  _mm256_movemask_epi8(_ir4);
+
+	_ir0 = _mm256_and_si256(_mm256_cmpgt_epi8(b3, _rr0), _mm256_cmpgt_epi8(_rr1, b3));
+	_ir1 = _mm256_cmpeq_epi8(b3, _rr2);
+	_ir2 = _mm256_cmpeq_epi8(b3, _rr3);
+	_ir3 = _mm256_or_si256(_ir0, _ir2);
+	_ir4 = _mm256_andnot_si256(_ir1, _ir3);
+	
+	uint64_t _r3 =  _mm256_movemask_epi8(_ir4);
+
+	*r0 = (_r1 << 32) | _r0;
+	*r1 = (_r3 << 32) | _r2;
 }
 
 FORCEINLINE static size_t
@@ -131,11 +225,64 @@ _target_index_avx2_64(const char *buf)
 }
 
 FORCEINLINE static size_t
+_match_httpver_10_avx2(const char *buf)
+{
+	__m256i _b0 = _mm256_loadu_si256((void*)buf);
+	__m256i _b1 = _mm256_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
+				      0, 0, 0, 0, 0, 0, 0, 0,
+				      0, 0, 0, 0, 0, 0, 0, 0,
+				      '0', '.', '1', '/', 'P', 'T', 'T', 'H');
+	return _match_httpver_avx2(_b0, _b1);
+}
+
+FORCEINLINE static size_t
+_match_httpver_11_avx2(const char *buf)
+{
+	__m256i _b0 = _mm256_loadu_si256((void*)buf);
+	__m256i _b1 = _mm256_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
+				      0, 0, 0, 0, 0, 0, 0, 0,
+				      0, 0, 0, 0, 0, 0, 0, 0,
+				      '1', '.', '1', '/', 'P', 'T', 'T', 'H');
+	return _match_httpver_avx2(_b0, _b1);
+}
+
+FORCEINLINE static size_t
 _field_name_index_avx2_32(const char *buf)
 {
 	__m256i b0 = _mm256_loadu_si256((void*)buf);
 	uint32_t bitmap = _find_field_name_avx2_32(b0);
 	return _tzcnt(bitmap);
+}
+
+FORCEINLINE static size_t
+_field_value_index_avx2_32(const char *buf)
+{
+	__m256i b0 = _mm256_loadu_si256((void*)buf);
+	uint32_t bitmap = _find_field_val_avx2_32(b0);
+	return _tzcnt(bitmap);
+}
+
+FORCEINLINE static size_t
+_field_value_index_avx2_64(const char *buf)
+{
+	__m256i b0 = _mm256_loadu_si256((void*)buf);
+	__m256i b1 = _mm256_loadu_si256((void*)(buf + 32));
+	uint64_t bitmap = _find_field_val_avx2_64(b0, b1);
+	return _tzcnt(bitmap);
+}
+
+FORCEINLINE static size_t
+_field_value_index_avx2_128(const char *buf)
+{
+	__m256i b0 = _mm256_loadu_si256((void*)buf);
+	__m256i b1 = _mm256_loadu_si256((void*)(buf + 32));
+	__m256i b2 = _mm256_loadu_si256((void*)(buf + 64));
+	__m256i b3 = _mm256_loadu_si256((void*)(buf + 96));
+	uint64_t r0, r1;
+	_find_field_val_avx2_128(b0, b1, b2, b3, &r0, &r1);
+
+	uint64_t s0 = _tzcnt(r0), s1 = _tzcnt(r1);
+	return s0 == 64 ? s1 + 64 : s0;
 }
 
 #endif	/* USE_AVX2_ */
@@ -416,6 +563,24 @@ izm_http_parse_request_line(struct izm_http_request_line_parser *parser,
 			}
 			break;
 		case S_BEFORE_HTTPVER:
+#ifdef USE_AVX2_
+			if (end - p > 32) {
+				if (_match_httpver_10_avx2(p)) {
+					l->httpver_major = 1;
+					l->httpver_minor = 0;
+					p += 7;
+					parser->state = S_CR;
+					break;
+				} else if (_match_httpver_11_avx2(p)) {
+					l->httpver_major = 1;
+					l->httpver_minor = 1;
+					p += 7;
+					parser->state = S_CR;
+					break;
+				} else
+					goto BAD_REQUEST;
+			} else
+#endif	/* USE_AVX2_ */
 			m = p;
 			parser->state = S_BEFORE_MAJOR_VER;
 			break;
@@ -669,6 +834,10 @@ izm_http_parse_headers(struct izm_http_headers_parser *parser,
 				if (unlikely(*p != ':'))
 					goto BAD_REQUEST;
 
+				ns = p - nm;
+				if (unlikely(ns == 0))
+					goto BAD_REQUEST;
+
 				parser->state = S_BEFORE_VALUE;
 			} else
 #endif	/* USE_AVX2_ */
@@ -689,6 +858,51 @@ izm_http_parse_headers(struct izm_http_headers_parser *parser,
 			parser->state = S_VALUE;
 			/* FALL THROUGH */
 		case S_VALUE:
+#ifdef USE_AVX2_
+			if (end - p > 128) {
+				size_t idx = _field_value_index_avx2_128(p);
+				if (unlikely(idx >= 128)) {
+					p += 127;
+					break;
+				}
+
+				p += idx;
+				
+				if (unlikely(*p != '\r'))
+					goto BAD_REQUEST;
+				parser->state = S_CR;
+				break;
+			} else if (end - p > 64) {
+			/* if (end - p > 64) { */
+				size_t idx = _field_value_index_avx2_64(p);
+				if (unlikely(idx >= 64)) {
+					p += 63;
+					break;
+				}
+
+				p += idx;
+				
+				if (unlikely(*p != '\r'))
+					goto BAD_REQUEST;
+
+				parser->state = S_CR;
+				break;
+			} else if (end - p > 32) {
+				size_t idx = _field_value_index_avx2_32(p);
+				if (idx >= 32) {
+					p += 63;
+					break;
+				}
+
+				p += idx;
+
+				if (unlikely(*p != '\r'))
+					goto BAD_REQUEST;
+
+				parser->state = S_CR;
+				break;
+			} else
+#endif	/* USE_AVX2_ */
 			if (!is_vchar(*p) && !is_obs_text(*p) && !is_whitespace(*p)) {			
 				if (unlikely(*p != '\r'))
 					goto BAD_REQUEST;
