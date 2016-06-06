@@ -4,6 +4,108 @@
 #define USE_BRANCH_PREDICT
 #define USE_CHAR_MAPS
 
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wattributes"
+#define FORCEINLINE __attribute__((always_inline))
+#else
+#define FORCEINLINE
+#endif	/* __GNUC__ */
+
+#if defined USE_AVX2 && defined __AVX2__
+#define USE_AVX2_
+#endif	/* USE_AVX2 && __AVX2__ */
+
+#if defined USE_AVX2_
+#include <immintrin.h>
+
+FORCEINLINE static unsigned long
+_tzcnt(uint64_t in)
+{
+	unsigned long res;
+	asm ("tzcnt %1, %0\n\t" :"=r"(res) : "r"(in));
+	return res;
+}
+
+FORCEINLINE static uint32_t
+_find_method_avx2_32(__m256i b0)
+{
+	__m256i _rr0 = _mm256_set1_epi8(0x40);
+	__m256i _rr1 = _mm256_set1_epi8(0x5B);
+
+	__m256i _ir0 = _mm256_and_si256(_mm256_cmpgt_epi8(b0, _rr0), _mm256_cmpgt_epi8(_rr1, b0));
+
+	return _mm256_movemask_epi8(_ir0);
+}
+
+FORCEINLINE static uint32_t
+_find_target_avx2_32(__m256i b0)
+{
+	__m256i _rr0 = _mm256_set1_epi8(0x00);
+	__m256i _rr1 = _mm256_set1_epi8(0x32);
+	__m256i _rr2 = _mm256_set1_epi8(0x7F);
+
+	__m256i _ir0 = _mm256_cmpgt_epi8(_rr0, b0);
+	__m256i _ir1 = _mm256_cmpgt_epi8(b0, _rr1);
+	__m256i _ir2 = _mm256_cmpeq_epi8(b0, _rr2);
+	__m256i _ir3 = _mm256_or_si256(_ir0, _ir1);
+	__m256i _ir4 = _mm256_andnot_si256(_ir2, _ir3);
+
+	return _mm256_movemask_epi8(_ir4);	
+}
+
+FORCEINLINE static uint64_t
+_find_target_avx2_64(__m256i b0, __m256i b1)
+{
+	__m256i _rr0 = _mm256_set1_epi8(0x00);
+	__m256i _rr1 = _mm256_set1_epi8(0x32);
+	__m256i _rr2 = _mm256_set1_epi8(0x7F);
+
+	__m256i _ir0 = _mm256_cmpgt_epi8(_rr0, b0);
+	__m256i _ir1 = _mm256_cmpgt_epi8(b0, _rr1);
+	__m256i _ir2 = _mm256_cmpeq_epi8(b0, _rr2);
+	__m256i _ir3 = _mm256_or_si256(_ir0, _ir1);
+	__m256i _ir4 = _mm256_andnot_si256(_ir2, _ir3);
+
+	uint64_t _r0 = _mm256_movemask_epi8(_ir4);
+
+	_ir0 = _mm256_cmpgt_epi8(_rr0, b1);
+	_ir1 = _mm256_cmpgt_epi8(b1, _rr1);
+	_ir2 = _mm256_cmpeq_epi8(b1, _rr2);
+	_ir3 = _mm256_or_si256(_ir0, _ir1);
+	_ir4 = _mm256_andnot_si256(_ir2, _ir3);
+
+	uint64_t _r1 = _mm256_movemask_epi8(_ir4);
+
+	return (_r1 << 32) | _r0;	
+}
+
+FORCEINLINE static size_t
+_method_index_avx2_32(const char *buf)
+{
+	__m256i b0 = _mm256_loadu_si256((void*)buf);
+	uint32_t bitmap = _find_method_avx2_32(b0);
+	return _tzcnt(bitmap);
+}
+
+FORCEINLINE static size_t
+_target_index_avx2_32(const char *buf)
+{
+	__m256i b0 = _mm256_loadu_si256((void*)buf);
+	uint32_t bitmap = _find_target_avx2_32(b0);
+	return _tzcnt(bitmap);	
+}
+
+FORCEINLINE static size_t
+_target_index_avx2_64(const char *buf)
+{
+	__m256i b0 = _mm256_loadu_si256((void*)buf);
+	__m256i b1 = _mm256_loadu_si256((void*)(buf + 32));	
+	uint64_t bitmap = _find_target_avx2_64(b0, b1);
+	return _tzcnt(bitmap);
+}
+
+#endif	/* USE_AVX2_ */
+
 #if defined USE_STREQU5
 #define STREQU5(A, B) ((A[0] == B[0]) && (A[1] == B[1])		\
 		       && (A[2] == B[2]) && (A[3] == B[3])	\
@@ -198,6 +300,23 @@ izm_http_parse_request_line(struct izm_http_request_line_parser *parser,
 		case S_FINISHED:
 			goto FINISHED;			
 		case S_METHOD:
+#ifdef USE_AVX2_
+			if (input_size >= 32) {
+				size_t idx = _method_index_avx2_32(p);
+				if (unlikely(idx >= 32)) {
+					goto BAD_REQUEST;
+				}
+				p += idx;
+
+				if (unlikely(*p != ' '))
+					goto BAD_REQUEST;
+
+				l->method = m;
+				l->method_size = idx;
+				parser->state = S_BEFORE_TARGET;
+				break;
+			} else
+#endif	/* USE_AVX2_ */				
 			if (!is_tchar(*p)) {
 				if (unlikely(*p != ' '))
 					goto BAD_REQUEST;
@@ -216,6 +335,39 @@ izm_http_parse_request_line(struct izm_http_request_line_parser *parser,
 			parser->state = S_TARGET;
 			/* FALL THROUGH */
 		case S_TARGET:
+#ifdef USE_AVX2_
+			if (end - p >= 64) {
+				size_t idx = _target_index_avx2_64(p);
+				if (unlikely(idx >= 64)) {
+					p += 63;
+					break;
+				}
+				
+				p += idx;
+				if (unlikely(*p != ' '))
+					goto BAD_REQUEST;
+
+				l->target = m;
+				l->target_size = p - m;
+				parser->state = S_BEFORE_HTTPVER;
+				break;
+			} else if (end - p >= 32) {
+				size_t idx = _target_index_avx2_32(p);
+				if (unlikely(idx >= 32)) {
+					p += 31;
+					break;
+				}
+
+				p += idx;
+				if (unlikely(*p != ' '))
+					goto BAD_REQUEST;
+
+				l->target = m;
+				l->target_size = p - m;
+				parser->state = S_BEFORE_HTTPVER;
+				break;
+			} else
+#endif	/* USE_AVX2_ */
 			if (!is_vchar(*p) && !is_obs_text(*p)) {
 				if (unlikely(*p != ' '))
 					goto BAD_REQUEST;
